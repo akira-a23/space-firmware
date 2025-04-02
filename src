@@ -1,1 +1,77 @@
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEScan.h>
+#include <BLEAdvertisedDevice.h>
+#include <IRremoteESP8266.h>
+#include <IRsend.h>
+
+// BLE Advertising Interval (in milliseconds)
+#define ADVERTISEMENT_INTERVAL 100
+#define MAX_ADV_DEVICES 10
+
+class BLEAdvertiser {
+public:
+  BLEAdvertiser() {
+    BLEDevice::init("ESP32_BLE_Spam");
+    _adv = BLEAdvertising::getInstance();
+    _adv->setAdvertisementType(BLE_ADV_TYPE_IND);
+    _adv->setAdvertisementInterval(ADV_INTERVAL);
+  }
+
+  void startFakeAdvertising() {
+    char fakeDeviceName[10];
+    snprintf(fakeDeviceName, sizeof(fakeDeviceName), "Device_%d", random(1000, 9999));
+    
+    BLEAdvertisementData advertisementData;
+    advertisementData.setName(fakeDeviceName);
+    advertisementData.setManufacturerData(getRandomPayload());
+    
+    _adv->setAdvertisementData(advertisementData);
+    _adv->start();
+    Serial.println("Starting Fake BLE Advertising");
+  }
+
+  void stopAdvertising() {
+    _adv->stop();
+    Serial.println("Stopped Fake BLE Advertising");
+  }
+
+private:
+  BLEAdvertising *_adv;
+
+  std::string getRandomPayload() {
+    String payload = "";
+    for (int i = 0; i < 16; i++) {
+      payload += String(random(0, 255), HEX);
+    }
+    return payload.c_str();
+  }
+};
+
+// Global BLE advertiser instance
+BLEAdvertiser advertiser;
+
+void setup() {
+  Serial.begin(115200);
+
+  BLEDevice::init("ESP32_BLE_Spam");
+  advertiser.startFakeAdvertising();
+  rotateMACAddress();
+}
+
+void rotateMACAddress() {
+  uint8_t newMAC[6];
+  for (int i = 0; i < 6; i++) {
+    newMAC[i] = random(0, 255);
+  }
+  BLEDevice::setMACAddress(newMAC);
+  Serial.println("Rotated MAC Address");
+}
+
+void loop() {
+  delay(ADV_INTERVAL);
+  if (millis() % 5000 == 0) {
+    advertiser.startFakeAdvertising();
+  }
+}
 
